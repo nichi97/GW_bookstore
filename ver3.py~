@@ -42,15 +42,9 @@ def update_books():
     else:
 
         is_defined = False
-        #data = pd.DataFrame(np.array(["ISBN", "Author", "Publisher", 
-        #                        "Title", "Quantity"])).T
         data = pd.DataFrame(columns=["ISBN", "Author", "Publisher", 
-                                "Title", "Quantity"])
+                                "Title", "Quantity", "Price"])
 
-        #with open("book_log.csv", "w", newline='') as csvFile:
-        #    filewriter = csv.writer(csvFile, delimiter=",")
-        #    filewriter.writerow(["ISBN", "Author", "Publisher", 
-        #                        "Title", "Quantity"])
         #csvFile.close()
 
     return data
@@ -88,6 +82,19 @@ def merge_book(ISBN, data):
 
 
 # def local_log(book_number):
+
+
+def update_price(data, ISBN, price):
+    """
+    This function update the price of a given book
+    Input: data -- our database
+           ISBN: the ISBN number of the book whose price will be changed to
+           price: the new price that we want to change to 
+    Output: data 
+    Side effect: change the price of a given book in data.
+    """
+    data.loc[data["ISBN"] == ISBN, "Price"] = price
+    return data
 
 
 def web_log(book_number, data):
@@ -152,14 +159,19 @@ def web_log(book_number, data):
             return
 
     quantity, in_log, data = merge_book(ISBN,data)
-    row = [ISBN, author, publisher, title, quantity]
     if not in_log:
+        price = input("Please enter the price of this book. \n")
         data = data.append({'ISBN':ISBN, 'Author':author,
-            'Title':title, 'Publisher':publisher, 'Quantity':1},
+            'Title':title, 'Publisher':publisher, 'Quantity':1, 'Price':float(price)},
             ignore_index=True)
 
     data.to_csv("book_log.csv", index = False)
-    print(row)
+
+    # 7 -- the seventh solumn is the price column
+    #PRICE_COLUMN = 7
+    #price = data.at[data["ISBN"] == int(ISBN), PRICE_COLUMN]
+    #row = [ISBN, author, publisher, title, quantity, price]
+    #print(row)
     
 
     # check if the file has been created, if not, create one
