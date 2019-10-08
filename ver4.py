@@ -3,7 +3,6 @@ import numpy as np
 import requests as req
 import pprint as pp
 import json
-import csv
 import os
 import sys
 
@@ -17,10 +16,15 @@ import sys
 
 # the documentation of the API can be found here: https://openlibrary.org/dev/docs/api/books
 
+
+# def reformat_name(raw_name):
+
+
+
 def update_books():
 
     """
-    This function read the file book_log.csv in the directory
+    This function read the file book_log.xlsx in the directory
 
     Input: None
     Output: None
@@ -30,28 +34,21 @@ def update_books():
     global ISBN_quantity_dict 
     global is_defined 
 
-    exists = os.path.isfile("./book_log.csv")
+    exists = os.path.isfile("./book_log.xlsx")
 
     if exists:
         
         is_defined = True
-        data = pd.read_csv("./book_log.csv")
+        data = pd.read_excel("./book_log.xlsx")
         ISBN_quantity_dict = dict(zip(data["ISBN"], data["Quantity"]))
 
 
     else:
 
         is_defined = False
-        #data = pd.DataFrame(np.array(["ISBN", "Author", "Publisher", 
-        #                        "Title", "Quantity"])).T
         data = pd.DataFrame(columns=["ISBN", "Author", "Publisher", 
-                                "Title", "Quantity"])
+                                "Title", "Quantity", "Price"])
 
-        #with open("book_log.csv", "w", newline='') as csvFile:
-        #    filewriter = csv.writer(csvFile, delimiter=",")
-        #    filewriter.writerow(["ISBN", "Author", "Publisher", 
-        #                        "Title", "Quantity"])
-        #csvFile.close()
 
     return data
 
@@ -62,7 +59,7 @@ def merge_book(ISBN, data):
     """
     This function check given 
     
-    Side effect: Quanlity column of book_log.csv will be updated
+    Side effect: Quanlity column of book_log.xlsx will be updated
 
     Input: ISBN -- the ISBN number of the new logged book
     Output: in_log -- whether this book is in the book_log or not
@@ -72,13 +69,12 @@ def merge_book(ISBN, data):
     updated_book_list = []
     quantity = 1
 
-    # check if book is in book_log.csv
+    # check if book is in book_log.xlsx
     ISBN = int(ISBN)
     if is_defined and (ISBN in ISBN_quantity_dict):
-        # TODO DEBUG
         ISBN_quantity_dict[ISBN] += 1
         updated_book_list.append(ISBN)
-        in_log = True  # TODO update prompt
+        in_log = True  
 
         data.loc[data["ISBN"] == ISBN, "Quantity"] += 1
 
@@ -88,6 +84,19 @@ def merge_book(ISBN, data):
 
 
 # def local_log(book_number):
+
+
+def update_price(data, ISBN, price):
+    """
+    This function update the price of a given book
+    Input: data -- our database
+           ISBN: the ISBN number of the book whose price will be changed to
+           price: the new price that we want to change to 
+    Output: data 
+    Side effect: change the price of a given book in data.
+    """
+    data.loc[data["ISBN"] == ISBN, "Price"] = price
+    return data
 
 
 def web_log(book_number, data):
@@ -152,13 +161,19 @@ def web_log(book_number, data):
             return
 
     quantity, in_log, data = merge_book(ISBN,data)
-    row = [ISBN, author, publisher, title, quantity]
     if not in_log:
-        data = data.append({'ISBN':ISBN, 'Author':author,
-            'Title':title, 'Publisher':publisher, 'Quantity':1},
+        price = input("Please enter the price of this book. \n")
+        ISBN_t = str(ISBN) + '\t'
+        data = data.append({'ISBN':ISBN_t, 'Author':author,
+            'Title':title, 'Publisher':publisher, 'Quantity':1, 'Price':float(price)},
             ignore_index=True)
 
-    data.to_csv("book_log.csv", index = False)
+    data.to_excel("book_log.xlsx", index = False)
+
+    # 7 -- the seventh solumn is the price column
+    #PRICE_COLUMN = 7
+    #price = data.at[data["ISBN"] == int(ISBN), PRICE_COLUMN]
+    row = [ISBN, author, publisher, title, quantity]
     print(row)
     
 
