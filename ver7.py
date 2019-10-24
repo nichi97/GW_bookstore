@@ -102,6 +102,7 @@ def merge_book(ISBN, data):
 # def local_log(book_number):
 
 
+
 def update_price(data, ISBN, price):
     """
     This function update the price of a given book
@@ -146,6 +147,18 @@ def web_log(book_number, data):
     except:
         print("There is no book with this ISBN. Input ISBN again.")
         return 
+
+    # handle the case where the input is ISBN 10, not 13. We convert it to 
+    # ISBN 13 if possible. Else, send warning.
+    ISBN_str = str(ISBN)[:3]
+    if ISBN_str != str(978):
+        try:
+            ISBN = parsed_data2["identifiers"]["isbn_13"][0]
+            print("ISBN10 automatically converted to ISBN13.")
+        except KeyError as error:
+            print("The ISBN number you typed in is ISBN 10, not ISBN13. There is not ISBN13 number in database for this book.")
+
+    
 
     # get the information we need
     try:
