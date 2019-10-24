@@ -31,6 +31,9 @@ def reformat_name(raw_name):
         name_formatted = name_ls[2] + ', ' + name_ls[0]
     return name_formatted
 
+#def ISBN10_to_13(ISBN10):
+
+    
 
 def update_books():
 

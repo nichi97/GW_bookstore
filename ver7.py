@@ -31,6 +31,9 @@ def reformat_name(raw_name):
         name_formatted = name_ls[2] + ', ' + name_ls[0]
     return name_formatted
 
+#def ISBN10_to_13(ISBN10):
+
+    
 
 def update_books():
 
@@ -65,6 +68,7 @@ def update_books():
 
 
 
+
 def merge_book(ISBN, data):
 
     """
@@ -79,6 +83,7 @@ def merge_book(ISBN, data):
     in_log = False 
     updated_book_list = []
     quantity = 1
+    subtitle = ""
 
     # check if book is in book_log.xlsx
     ISBN = int(ISBN)
@@ -115,6 +120,7 @@ def web_log(book_number, data):
     # signal flags for [ISBN, author, publisher, title ]
     # in case they are missing in the data base. 
     flags = [0,0,0,0]
+    has_subtitle = False
 
     author = None
     publisher = None
@@ -154,12 +160,24 @@ def web_log(book_number, data):
         print("Publisher info is not available.")
         flags[2] = 1
 
-  
     try:
         title = parsed_data2['title']
     except KeyError as error:
         print("title info is not available.")
         flags[4] = 1 
+
+    try:
+        # if the book has a subtitle, use the subtitle as well.
+        subtitle = parsed_data2['subtitle']
+        has_subtitle = True
+    except KeyError as error:
+        print("This book does not have any subtitle.")
+        
+
+    
+    # if the book has a subtitle, update the title to the form "title: subtitle"
+    if has_subtitle:
+        title = title + ": " + subtitle
 
     # if any of the flags is triggered
     if(flags != [0,0,0,0]):
