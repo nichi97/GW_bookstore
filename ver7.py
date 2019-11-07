@@ -31,9 +31,6 @@ def reformat_name(raw_name):
         name_formatted = name_ls[2] + ', ' + name_ls[0]
     return name_formatted
 
-#def ISBN10_to_13(ISBN10):
-
-    
 
 def update_books():
 
@@ -83,7 +80,6 @@ def merge_book(ISBN, data):
     in_log = False 
     updated_book_list = []
     quantity = 1
-    subtitle = ""
 
     # check if book is in book_log.xlsx
     ISBN = int(ISBN)
@@ -97,11 +93,6 @@ def merge_book(ISBN, data):
         quantity = data.loc[data["ISBN"] == ISBN, "Quantity"]
 
     return quantity, in_log, data 
-
-
-# def local_log(book_number):
-
-
 
 def update_price(data, ISBN, price):
     """
@@ -118,7 +109,7 @@ def update_price(data, ISBN, price):
 
 def web_log(book_number, data):
 
-    # signal flags for [ISBN, author, publisher, title ]
+    # signal flags for [ISBN, author, publisher, title]
     # in case they are missing in the data base. 
     flags = [0,0,0,0]
     has_subtitle = False
@@ -156,7 +147,8 @@ def web_log(book_number, data):
             ISBN = parsed_data2["identifiers"]["isbn_13"][0]
             print("ISBN10 automatically converted to ISBN13.")
         except KeyError as error:
-            print("The ISBN number you typed in is ISBN 10, not ISBN13. There is not ISBN13 number in database for this book.")
+            print("The ISBN number you typed in is ISBN 10, not ISBN13. There is no ISBN13 number in database for this book.")
+            flags[0] = 1
 
     
 
@@ -177,7 +169,7 @@ def web_log(book_number, data):
         title = parsed_data2['title']
     except KeyError as error:
         print("title info is not available.")
-        flags[4] = 1 
+        flags[3] = 1 
 
     try:
         # if the book has a subtitle, use the subtitle as well.
@@ -213,19 +205,13 @@ def web_log(book_number, data):
 
     data.to_excel("book_log.xlsx", index = False)
 
-    # 7 -- the seventh solumn is the price column
     #PRICE_COLUMN = 7
     #price = data.at[data["ISBN"] == int(ISBN), PRICE_COLUMN]
+    author = reformat_name(author)
     row = [ISBN, author, publisher, title, quantity]
     print(row)
     
-
-    # check if the file has been created, if not, create one
-
     return data
-
-
-
     
 def main():
     while(True):
@@ -234,8 +220,6 @@ def main():
         if num == "quit":
             break
         data = web_log(num,data)
-
-    
 
 if __name__ == "__main__":
     main()
