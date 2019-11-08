@@ -45,12 +45,13 @@ def update_books():
     if exists:
         is_defined = True
         data = pd.read_excel("./book_log.xlsx")
-        ISBN_quantity_dict = dict(zip(data["ISBN"], data["Quantity"]))
+        ISBN_quantity_dict = dict(zip(data["SKU"], data["New Quantity"]))
     else:
         is_defined = False
-        data = pd.DataFrame(columns=["ISBN", "Author", "Publisher",
-                                     "Title", "Quantity", "Price"])
-
+        data = pd.DataFrame(columns=["Item Name", "Description", "Category",
+                                     "SKU", "Variation Name", "Price", "Current Quantity Groundwork Books",
+                                     "New Quantity Groundwork Books", "Stock Alert Enabled Groundwork Books",
+                                     "Stock Alert Count Groundwork Books", "Tax - Sales Tax (7.75%)"])
     return data
 
 
@@ -75,8 +76,8 @@ def merge_book(ISBN, data):
         updated_book_list.append(ISBN)
         in_log = True
 
-        data.loc[data["ISBN"] == ISBN, "Quantity"] += 1
-        quantity = data.loc[data["ISBN"] == ISBN, "Quantity"]
+        data.loc[data["SKU"] == ISBN, "New Quantity Groundwork Books"] += 1
+        quantity = data.loc[data["SKU"] == ISBN, "New Quantity Groundwork Books"]
 
     return quantity, in_log, data
 
@@ -90,16 +91,11 @@ def update_price(data, ISBN, price):
     Output: data
     Side effect: change the price of a given book in data.
     """
-    data.loc[data["ISBN"] == ISBN, "Price"] = price
+    data.loc[data["SKU"] == ISBN, "Price"] = price
     return data
 
 
-def web_log(ISBN, data, vol):
-    author = ""
-    publisher = ""
-    title = ""
-    found13 = True
-
+def web_log(ISBN, data, vol, category):
     output = vol.list(q="isbn:" + ISBN, maxResults=1).execute()
     if "items" not in output or len(output["items"]) == 0:
         print("No book found with this ISBN.")
@@ -120,14 +116,13 @@ def web_log(ISBN, data, vol):
                   "this book.")
             ISBN_in = input("Enter ISBN 13 manually: ").strip()
             if ISBN_in:
-                ISBN = isbn_in
+                ISBN = ISBN_in
 
     # get the information we need
     if "authors" in info and len(info["authors"]) > 0:
         author = info["authors"][0]
     else:
         author = input("Author info is not available, enter manually (firstname lastname): ").strip()
-        
 
     if "publisher" in info:
         publisher = info['publisher']
@@ -148,8 +143,10 @@ def web_log(ISBN, data, vol):
     quantity, in_log, data = merge_book(ISBN, data)
     if not in_log:
         price = input("Enter the price of this book: ")
-        data = data.append({'ISBN': int(ISBN), 'Author': author,
-                            'Title': title, 'Publisher': publisher, 'Quantity': 1, 'Price': float(price)},
+        data = data.append({"Description": publisher, "Category": category, "SKU": ISBN, "Variation Name": author,
+                            "Price": float(price), "Current Quantity Groundwork Books": "",
+                            "New Quantity Groundwork Books": 1, "Stock Alert Enabled Groundwork Books": "",
+                            "Stock Alert Count Groundwork Books": "", "Tax - Sales Tax (7.75%)": "Y"},
                            ignore_index=True)
 
     data.to_excel("book_log.xlsx", index=False)
@@ -164,12 +161,17 @@ def main():
         api_key = f.readline().strip()
     service = build("books", "v1", developerKey=api_key)
     vol = service.volumes()
+    category = ""
     while True:
         data = update_books()
-        num = input("Enter the ISBN. If finished, type \'quit\': ").strip()
+        num = input("Enter the ISBN, or enter category:category name to set the category. If finished, type \'quit\': "
+                    ).strip()
         if num == "quit":
             break
-        data = web_log(num, data, vol)
+        if num.startswith("category:"):
+            category = num[9:]
+        else:
+            web_log(num, data, vol, category)
 
 
 if __name__ == "__main__":
