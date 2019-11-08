@@ -1,2 +1,5 @@
 *.un~
 *.py~
+venv/
+.~lock.book_log.xlsx#
+key.txt
