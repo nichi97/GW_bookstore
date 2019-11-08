@@ -101,14 +101,15 @@ def web_log(ISBN, data, vol):
     found13 = True
 
     output = vol.list(q="isbn:" + ISBN, maxResults=1).execute()
-    if len(output["items"]) == 0:
+    if "items" not in output or len(output["items"]) == 0:
         print("No book found with this ISBN.")
-        return
-    info = output["items"][0]["volumeInfo"]
+        info = {}
+    else:
+        info = output["items"][0]["volumeInfo"]
 
     # handle the case where the input is ISBN 10, not 13. We convert it to
     # ISBN 13 if possible. Else, send warning.
-    if ISBN[:3] != "978":
+    if ISBN[:3] != "978" and ISBN[:3] != "979":
         found13 = False
         for identifier in info["industryIdentifiers"]:
             if identifier["type"] == "ISBN_13":
@@ -117,36 +118,31 @@ def web_log(ISBN, data, vol):
         if not found13:
             print("The ISBN number you typed in is ISBN 10, not ISBN13. There is no ISBN13 number in database for "
                   "this book.")
+            ISBN_in = input("Enter ISBN 13 manually: ").strip()
+            if ISBN_in:
+                ISBN = isbn_in
 
     # get the information we need
     if "authors" in info and len(info["authors"]) > 0:
         author = info["authors"][0]
     else:
-        print("author info is not available.")
+        author = input("Author info is not available, enter manually (firstname lastname): ").strip()
+        
 
     if "publisher" in info:
         publisher = info['publisher']
     else:
-        print("Publisher info is not available.")
+        publisher = input("Publisher info is not available, enter manually: ").strip()
 
     if "title" in info:
         title = info['title']
     else:
-        print("title info is not available.")
+        title = input("Title info is not available, enter manually: ").strip()
 
     if "subtitle" in info:
         # if the book has a subtitle, use the subtitle as well.
         subtitle = info['subtitle']
         title = title + ": " + subtitle
-
-    # if any info is missing
-    if not author or not title or not publisher or not found13:
-        key = input("Some of the info are missing. Do you still want to log the book? Y/N \n").upper().strip()
-        if key == "Y":
-            print("Book is logged.")
-        if key == "N":
-            print("Logging forfeited.")
-            return
 
     author = reformat_name(author)
     quantity, in_log, data = merge_book(ISBN, data)
@@ -170,7 +166,7 @@ def main():
     vol = service.volumes()
     while True:
         data = update_books()
-        num = input("Enter the ISBN. If finished, type \'quit\': \n").strip()
+        num = input("Enter the ISBN. If finished, type \'quit\': ").strip()
         if num == "quit":
             break
         data = web_log(num, data, vol)
