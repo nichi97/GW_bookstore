@@ -1,3 +1,5 @@
+import math
+
 from googleapiclient.discovery import build
 import os
 
@@ -38,20 +40,19 @@ def update_books():
     """
 
     global ISBN_quantity_dict
-    global is_defined
 
     exists = os.path.isfile("./book_log.xlsx")
 
     if exists:
-        is_defined = True
         data = pd.read_excel("./book_log.xlsx")
-        ISBN_quantity_dict = dict(zip(data["SKU"], data["New Quantity"]))
     else:
-        is_defined = False
         data = pd.DataFrame(columns=["Item Name", "Description", "Category",
                                      "SKU", "Variation Name", "Price", "Current Quantity Groundwork Books",
                                      "New Quantity Groundwork Books", "Stock Alert Enabled Groundwork Books",
                                      "Stock Alert Count Groundwork Books", "Tax - Sales Tax (7.75%)"])
+
+    ISBN_quantity_dict = dict(zip(data["SKU"], data["New Quantity Groundwork Books"]))
+
     return data
 
 
@@ -66,14 +67,15 @@ def merge_book(ISBN, data):
     """
 
     in_log = False
-    updated_book_list = []
     quantity = 1
 
     # check if book is in book_log.xlsx
     ISBN = int(ISBN)
-    if is_defined and (ISBN in ISBN_quantity_dict):
+    if ISBN in ISBN_quantity_dict:
+        if math.isnan(data.loc[data["SKU"] == ISBN, "New Quantity Groundwork Books"]):
+            data.loc[data["SKU"] == ISBN, "New Quantity Groundwork Books"] = 0
+            ISBN_quantity_dict[ISBN] = 0
         ISBN_quantity_dict[ISBN] += 1
-        updated_book_list.append(ISBN)
         in_log = True
 
         data.loc[data["SKU"] == ISBN, "New Quantity Groundwork Books"] += 1
@@ -107,10 +109,11 @@ def web_log(ISBN, data, vol, category):
     # ISBN 13 if possible. Else, send warning.
     if ISBN[:3] != "978" and ISBN[:3] != "979":
         found13 = False
-        for identifier in info["industryIdentifiers"]:
-            if identifier["type"] == "ISBN_13":
-                found13 = True
-                ISBN = identifier["identifier"]
+        if "industryIdentifiers" in info:
+            for identifier in info["industryIdentifiers"]:
+                if identifier["type"] == "ISBN_13":
+                    found13 = True
+                    ISBN = identifier["identifier"]
         if not found13:
             print("The ISBN number you typed in is ISBN 10, not ISBN13. There is no ISBN13 number in database for "
                   "this book.")
@@ -121,37 +124,39 @@ def web_log(ISBN, data, vol, category):
     # get the information we need
     if "authors" in info and len(info["authors"]) > 0:
         author = info["authors"][0]
+        print("Author: " + author)
     else:
         author = input("Author info is not available, enter manually (firstname lastname): ").strip()
 
     if "publisher" in info:
         publisher = info['publisher']
+        print("Publisher: " + publisher)
     else:
         publisher = input("Publisher info is not available, enter manually: ").strip()
 
     if "title" in info:
         title = info['title']
+        if "subtitle" in info:
+            # if the book has a subtitle, use the subtitle as well.
+            subtitle = info['subtitle']
+            title = title + ": " + subtitle
+        print("Title: " + title)
     else:
         title = input("Title info is not available, enter manually: ").strip()
-
-    if "subtitle" in info:
-        # if the book has a subtitle, use the subtitle as well.
-        subtitle = info['subtitle']
-        title = title + ": " + subtitle
 
     author = reformat_name(author)
     quantity, in_log, data = merge_book(ISBN, data)
     if not in_log:
         price = input("Enter the price of this book: ")
-        data = data.append({"Description": publisher, "Category": category, "SKU": ISBN, "Variation Name": author,
-                            "Price": float(price), "Current Quantity Groundwork Books": "",
+        ISBN_quantity_dict[int(ISBN)] = 1
+        data = data.append({"Item Name": title, "Description": publisher, "Category": category, "SKU": int(ISBN),
+                            "Variation Name": author, "Price": float(price), "Current Quantity Groundwork Books": "",
                             "New Quantity Groundwork Books": 1, "Stock Alert Enabled Groundwork Books": "",
                             "Stock Alert Count Groundwork Books": "", "Tax - Sales Tax (7.75%)": "Y"},
                            ignore_index=True)
-
-    data.to_excel("book_log.xlsx", index=False)
-    row = [ISBN, author, publisher, title, quantity]
-    print(row)
+    else:
+        print("Already in inventory, new quantity increased from {} to {}".format(ISBN_quantity_dict[int(ISBN)] - 1,
+                                                                                  ISBN_quantity_dict[int(ISBN)]))
 
     return data
 
@@ -162,16 +167,23 @@ def main():
     service = build("books", "v1", developerKey=api_key)
     vol = service.volumes()
     category = ""
-    while True:
-        data = update_books()
-        num = input("Enter the ISBN, or enter category:category name to set the category. If finished, type \'quit\': "
-                    ).strip()
-        if num == "quit":
-            break
-        if num.startswith("category:"):
-            category = num[9:]
-        else:
-            web_log(num, data, vol, category)
+    data = update_books()
+    try:
+        while True:
+            # data = update_books()
+            num = input("Enter the ISBN, or enter category:category name to set the category. "
+                        "If finished, type \'quit\': ").strip()
+            if num == "quit":
+                break
+            if num.startswith("category:"):
+                category = num[9:]
+                print("Category set to \"" + category + "\"")
+            else:
+                data = web_log(num, data, vol, category)
+    finally:
+        print("Writing to file...")
+        data.to_excel("book_log.xlsx", index=False)
+        print("Done writing")
 
 
 if __name__ == "__main__":
